@@ -9,12 +9,7 @@ BUCKET = {{ cookiecutter.s3_bucket }}
 PROFILE = {{ cookiecutter.aws_profile }}
 PROJECT_NAME = {{ cookiecutter.repo_name }}
 PYTHON_INTERPRETER = {{ cookiecutter.python_interpreter }}
-
-ifeq (,$(shell which conda))
-HAS_CONDA=False
-else
-HAS_CONDA=True
-endif
+VIRTUALENV = {{ cookiecutter.virtualenv }}
 
 #################################################################################
 # COMMANDS                                                                      #
@@ -22,7 +17,11 @@ endif
 
 ## Install Python Dependencies
 requirements: test_environment
+ifeq (conda, $(VIRTUALENV))
+	conda env update --name $(PROJECT_NAME) -f environment.yml
+else
 	pip install -U pip setuptools wheel
+endif
 	pip install -r requirements.txt
 
 ## Make Dataset
@@ -56,13 +55,9 @@ endif
 
 ## Set up python interpreter environment
 create_environment:
-ifeq (True,$(HAS_CONDA))
+ifeq (conda,$(VIRTUALENV))
 		@echo ">>> Detected conda, creating conda environment."
-ifeq (3,$(findstring 3,$(PYTHON_INTERPRETER)))
-	conda create --name $(PROJECT_NAME) python=3
-else
-	conda create --name $(PROJECT_NAME) python=2.7
-endif
+	conda env create --name $(PROJECT_NAME) -f environment.yml
 		@echo ">>> New conda env created. Activate with:\nsource activate $(PROJECT_NAME)"
 else
 	@pip install -q virtualenv virtualenvwrapper
@@ -86,7 +81,7 @@ test_environment:
 # Self Documenting Commands                                                     #
 #################################################################################
 
-.DEFAULT_GOAL := help
+.DEFAULT_GOAL := show-help
 
 # Inspired by <http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html>
 # sed script explained:
@@ -103,8 +98,8 @@ test_environment:
 # 	* print line
 # Separate expressions are necessary because labels cannot be delimited by
 # semicolon; see <http://stackoverflow.com/a/11799865/1968>
-.PHONY: help
-help:
+.PHONY: show-help
+show-help:
 	@echo "$$(tput bold)Available rules:$$(tput sgr0)"
 	@echo
 	@sed -n -e "/^## / { \
